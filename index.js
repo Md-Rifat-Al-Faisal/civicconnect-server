@@ -55,6 +55,61 @@ const verifyToken = async (req, res, next) => {
   }
 };
 
+app.post("/events", verifyToken, async (req, res) => {
+  const {
+    title,
+    description,
+    eventType,
+    imageUrl,
+    location,
+    date,
+    creatorName,
+    creatorImage,
+  } = req.body;
+
+  if (!title || !description || !eventType || !imageUrl || !location) {
+    return res.status(400).send({ msg: "All fields are required!" });
+  }
+
+  const today = new Date().toISOString().split("T")[0];
+  if (!date || date <= today) {
+    return res.status(400).send({ msg: "Event date must be in the future!" });
+  }
+
+  const eventData = {
+    title,
+    description,
+    eventType,
+    imageUrl,
+    location,
+    date,
+    creatorName: creatorName || req.user.name || "Anonymous",
+    creatorImage: creatorImage || req.user.picture || "",
+    creatorEmail: req.user.email,
+    createdAt: new Date(),
+  };
+
+  const result = await eventCollection.insertOne(eventData);
+  res.status(201).send(result);
+});
+
+app.get("/events", async (req, res) => {
+  const today = new Date().toISOString().split("T")[0];
+  const query = { date: { $gte: today } };
+
+  if (req.query.search) {
+    const searchRegex = { $regex: req.query.search, $options: "i" };
+    query.$or = [{ title: searchRegex }, { location: searchRegex }];
+  }
+
+  if (req.query.eventType && req.query.eventType !== "All") {
+    query.eventType = req.query.eventType;
+  }
+
+  const result = await eventCollection.find(query).sort({ date: 1 }).toArray();
+  res.send(result);
+});
+
 app.get("/", (req, res) => {
   res.send({
     status: "ok",
