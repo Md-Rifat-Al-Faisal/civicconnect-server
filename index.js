@@ -32,6 +32,9 @@ const db = mongoClient.db("gathergood_db");
 const eventCollection = db.collection("events");
 const joinCollection = db.collection("joined_events");
 
+await joinCollection.createIndex({ eventId: 1, userEmail: 1 }, { unique: true });
+await eventCollection.createIndex({ date: 1 });
+
 const verifyToken = async (req, res, next) => {
   const authHeader = req.headers.authorization;
   if (!authHeader) {
@@ -162,6 +165,15 @@ const handleUpdateEvent = async (req, res) => {
       { _id: new ObjectId(id) },
       { $set: updateData }
     );
+    const syncFields = {};
+    if (updateData.title) syncFields.title = updateData.title;
+    if (updateData.eventType) syncFields.eventType = updateData.eventType;
+    if (updateData.location) syncFields.location = updateData.location;
+    if (updateData.date) syncFields.date = updateData.date;
+    if (updateData.imageUrl) syncFields.imageUrl = updateData.imageUrl;
+    if (Object.keys(syncFields).length > 0) {
+      await joinCollection.updateMany({ eventId: id }, { $set: syncFields });
+    }
     res.send(result);
   } catch (error) {
     return res.status(400).send({ msg: "Invalid request!" });
