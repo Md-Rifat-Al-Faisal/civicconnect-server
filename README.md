@@ -1,6 +1,6 @@
-# GatherGood - Server API
+# CivicConnect - Server API
 
-The backend REST API for **GatherGood**, a community-driven social development event management platform where citizens and volunteers create, join, and manage local community impact initiatives.
+The backend REST API for **CivicConnect**, a community-driven social development event management platform where citizens and volunteers create, join, and manage local community impact initiatives.
 
 Live API: [Insert Render/Vercel URL here]
 

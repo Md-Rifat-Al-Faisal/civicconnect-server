@@ -28,7 +28,7 @@ app.use(
 app.use(express.json());
 
 const mongoClient = await connectToMongoDB();
-const db = mongoClient.db("gathergood_db");
+const db = mongoClient.db();
 const eventCollection = db.collection("events");
 const joinCollection = db.collection("joined_events");
 
@@ -263,12 +263,12 @@ app.delete("/joined-events/:id", verifyToken, async (req, res) => {
 app.get("/", (req, res) => {
   res.send({
     status: "ok",
-    message: "GatherGood Social Development Events Server is running!",
+    message: "CivicConnect Social Development Events Server is running!",
   });
 });
 
 app.listen(PORT, () => {
-  console.log(`GatherGood server running on port ${PORT}`);
+  console.log(`CivicConnect server running on port ${PORT}`);
 });
 
 export default app;
