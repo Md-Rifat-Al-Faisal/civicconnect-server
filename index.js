@@ -110,6 +110,88 @@ app.get("/events", async (req, res) => {
   res.send(result);
 });
 
+app.get("/recent-events", async (req, res) => {
+  const today = new Date().toISOString().split("T")[0];
+  const result = await eventCollection
+    .find({ date: { $gte: today } })
+    .sort({ date: 1 })
+    .limit(6)
+    .toArray();
+  res.send(result);
+});
+
+app.get("/events/:id", async (req, res) => {
+  const { id } = req.params;
+  try {
+    const result = await eventCollection.findOne({ _id: new ObjectId(id) });
+    if (!result) {
+      return res.status(404).send({ msg: "Event not found!" });
+    }
+    res.send(result);
+  } catch (error) {
+    return res.status(400).send({ msg: "Invalid event ID!" });
+  }
+});
+
+app.get("/my-events", verifyToken, async (req, res) => {
+  const result = await eventCollection
+    .find({ creatorEmail: req.user.email })
+    .sort({ createdAt: -1 })
+    .toArray();
+  res.send(result);
+});
+
+const handleUpdateEvent = async (req, res) => {
+  const { id } = req.params;
+  try {
+    const event = await eventCollection.findOne({ _id: new ObjectId(id) });
+    if (!event) {
+      return res.status(404).send({ msg: "Event not found!" });
+    }
+    if (event.creatorEmail !== req.user.email) {
+      return res.status(403).send({ msg: "Forbidden action!" });
+    }
+    const { _id, creatorEmail, createdAt, ...updateData } = req.body;
+    if (updateData.date) {
+      const today = new Date().toISOString().split("T")[0];
+      if (updateData.date <= today) {
+        return res.status(400).send({ msg: "Event date must be in the future!" });
+      }
+    }
+    const result = await eventCollection.updateOne(
+      { _id: new ObjectId(id) },
+      { $set: updateData }
+    );
+    res.send(result);
+  } catch (error) {
+    return res.status(400).send({ msg: "Invalid request!" });
+  }
+};
+
+app.put("/events/:id", verifyToken, handleUpdateEvent);
+app.patch("/events/:id", verifyToken, handleUpdateEvent);
+
+const handleDeleteEvent = async (req, res) => {
+  const { id } = req.params;
+  try {
+    const event = await eventCollection.findOne({ _id: new ObjectId(id) });
+    if (!event) {
+      return res.status(404).send({ msg: "Event not found!" });
+    }
+    if (event.creatorEmail !== req.user.email) {
+      return res.status(403).send({ msg: "Forbidden action!" });
+    }
+    const result = await eventCollection.deleteOne({ _id: new ObjectId(id) });
+    await joinCollection.deleteMany({ eventId: id });
+    res.send(result);
+  } catch (error) {
+    return res.status(400).send({ msg: "Invalid request!" });
+  }
+};
+
+app.delete("/events/:id", verifyToken, handleDeleteEvent);
+app.delete("/event/:id", verifyToken, handleDeleteEvent);
+
 app.get("/", (req, res) => {
   res.send({
     status: "ok",
