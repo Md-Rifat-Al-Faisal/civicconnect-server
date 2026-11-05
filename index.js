@@ -192,6 +192,62 @@ const handleDeleteEvent = async (req, res) => {
 app.delete("/events/:id", verifyToken, handleDeleteEvent);
 app.delete("/event/:id", verifyToken, handleDeleteEvent);
 
+app.post("/join-event", verifyToken, async (req, res) => {
+  const { eventId, title, eventType, location, date, imageUrl } = req.body;
+  if (!eventId) {
+    return res.status(400).send({ msg: "Event ID is required!" });
+  }
+  const existing = await joinCollection.findOne({
+    eventId,
+    userEmail: req.user.email,
+  });
+  if (existing) {
+    return res.status(400).send({ msg: "You have already joined this event!" });
+  }
+  const joinData = {
+    eventId,
+    title,
+    eventType,
+    location,
+    date,
+    imageUrl,
+    userEmail: req.user.email,
+    userName: req.user.name || "Volunteer",
+    joinedAt: new Date(),
+  };
+  const result = await joinCollection.insertOne(joinData);
+  res.status(201).send(result);
+});
+
+app.get("/joined-events", verifyToken, async (req, res) => {
+  const result = await joinCollection
+    .find({ userEmail: req.user.email })
+    .sort({ date: 1 })
+    .toArray();
+  res.send(result);
+});
+
+app.get("/check-joined/:eventId", verifyToken, async (req, res) => {
+  const record = await joinCollection.findOne({
+    eventId: req.params.eventId,
+    userEmail: req.user.email,
+  });
+  res.send({ joined: !!record });
+});
+
+app.delete("/joined-events/:id", verifyToken, async (req, res) => {
+  const { id } = req.params;
+  try {
+    const result = await joinCollection.deleteOne({
+      _id: new ObjectId(id),
+      userEmail: req.user.email,
+    });
+    res.send(result);
+  } catch (error) {
+    return res.status(400).send({ msg: "Invalid request!" });
+  }
+});
+
 app.get("/", (req, res) => {
   res.send({
     status: "ok",
